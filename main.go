@@ -6,6 +6,7 @@ import (
 )
 
 func main() {
+
 	global.Name = "我的名字"
 	rbtutils.RBTDemo()
 
