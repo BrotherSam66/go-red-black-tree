@@ -3,7 +3,6 @@ package rbtutils
 import (
 	"errors"
 	"fmt"
-	"go-red-black-tree/bstmodels"
 	"go-red-black-tree/global"
 	"go-red-black-tree/rbtmodels"
 	"math"
@@ -13,8 +12,8 @@ import (
 func RBTDemo() {
 	RBTCreat()
 	err := errors.New("出错，本节点是空！")
-
-	ShowTreeColor(global.Root)
+	//global.Root = nil
+	//ShowTreeColor(global.Root)
 	//ShowTree(global.Root)
 
 	//err = LeftRotate(global.Root.Left) // 测通
@@ -25,13 +24,17 @@ func RBTDemo() {
 	//err = RightRotate(global.Root.Right) // 测通
 	//err = RightRotate(global.Root) // 测试根
 
-	err = RightRotate(global.Root.Right) // 测通
+	//err = RightRotate(global.Root) // 测通
+	//err = RightRotate(global.Root) // 测通
+	//err = RightRotate(global.Root) // 测通
+	//err = RightRotate(global.Root.Right) // 测通
+	//err = RightRotate(global.Root.Right) // 测通
 
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	//ShowTreeColor(global.Root)
+	ShowTreeColor(global.Root)
 	//ShowTree(global.Root)
 	//global.Root.Left.ShowTree()
 }
@@ -57,15 +60,28 @@ func RBTCreat() {
 
 }
 
+// RBTInput 红黑树创建
+func RBTInput() {
+	//RBTCreat()
+	for {
+		var key int
+		fmt.Println("请输入KEY，按回车键(0退出)：")
+		fmt.Scanln(&key)
+		Put(key, "")
+		ShowTreeColor(global.Root)
+	}
+}
+
 // Put 红黑树加入一个元素
-func Put(root *rbtmodels.RBTNode, key int, label string) {
-	if root == nil { // 原树为空树，新加入的转为根、黑色
-		root = rbtmodels.NewRBTNode(false, key, label, nil, nil, nil)
+func Put(key int, label string) {
+	if global.Root == nil { // 原树为空树，新加入的转为根、黑色
+		global.Root = rbtmodels.NewRBTNode(false, key, label, nil, nil, nil)
+		return
 	}
 
 	// 从root开始查找附加的位置
-	tempParent := root // 临时的父亲，移动的指针
-	var isToLeft bool  // 新加节点在tempParent的左儿子吗？
+	tempParent := global.Root // 临时的父亲，移动的指针
+	var isToLeft bool         // 新加节点在tempParent的左儿子吗？
 	for {
 		if tempParent.Key > key { // 新来数值小，向左搜索
 			if tempParent.Left == nil { // 左为空，左就是new位置，跳出循环
@@ -85,52 +101,142 @@ func Put(root *rbtmodels.RBTNode, key int, label string) {
 		}
 	}
 
-	// 找到位置了，开始拼装
+	// 找到位置了，开始拼装。global.NewUpNode是拟增加的节点（也可能是下级旋转上升上来的随机色节点）
 	global.NewUpNode = rbtmodels.NewRBTNode(true, key, label, tempParent, nil, nil)
 	if isToLeft { // 拼装在左儿子
 		tempParent.Left = global.NewUpNode
 	} else { // 拼装在右儿子
 		tempParent.Right = global.NewUpNode
 	}
-	// todo 分析 tempParent颜色，黑色就不用旋转
-	if tempParent.IsRed == false { // 黑色就不用旋转
-		return
-	}
 
-	FixAfterPut(isToLeft) // 拼装后，要调整，包括旋转+变色，可能递归
+	FixAfterPut() // 拼装后，要调整，包括旋转+变色，可能递归
 
 	return
 }
 
 // FixAfterPut  拼装后，要调整，包括旋转+变色，可能递归
-func FixAfterPut(isToLeft bool) {
-	// 支点p是tempParent.Parent
-	if isToLeft { // 拼装在左儿子，就右旋，支点是爷爷
-		LeftRotate(global.NewUpNode.Parent.Parent)
-	} else { // 拼装在右儿子，就左旋，支点是爷爷
-		RightRotate(global.NewUpNode.Parent.Parent)
+// global.NewUpNode是拟增加的节点（也可能是下级旋转上升上来的随机色节点）
+func FixAfterPut() {
+	err := errors.New("出错，本节点是空！")
+	if global.NewUpNode == global.Root { // 新加节点or上升上来的节点是root，改黑==》结束
+		global.Root.IsRed = false
+		return
 	}
-	// [1]（二三四树原来有1个节点），新加一个红，上黑下红，不变
-	// [2]（二三四树原来有2个节点），新加一个红
-	// [2.1.1]左三，爷左右，黑红红=》父亲支点左旋=》爷左左，黑红红
-	// [2.1.2]左三，爷左左，黑红红=》爷爷支点右旋=》父黑爷孙红。
-	// [2.2.1]右三，爷右左，黑红红=》父亲支点右旋=》爷右右，黑红红
-	// [2.2.2]右三，爷右右，黑红红=》爷爷支点左旋=》父黑爷孙红。
-	// [3]（二三四树原来有3个节点），新加一个红.原中位节点上升。相当于有叔叔
-	// [3]爷红，父叔黑，颜色不变
-	// [3.1.1]爷黑，父叔红，爷左右，黑红红=》父亲支点左旋=》爷左左，黑红红
-	// [3.1.2]爷黑，父叔红，爷左左，黑红红=》爷爷支点右旋=》父叔黑爷孙红。
-	// [3.2.1]爷黑，父叔红，爷右左，黑红红=》父亲支点右旋=》爷右右，黑红红
-	// [3.2.2]爷黑，父叔红，爷右右，黑红红=》爷爷支点左旋=》父叔黑爷孙红。
-	// 然后，看爷爷，和太爷爷，双红就递归。爷爷是root就爷黑
 
-	// todo 要看叔叔节点是不是红色
-	// todo 没完，还有递归比对颜色
-	// todo 针对爷爷（黑）.left（红）.right（红）=我的情况，先p=父亲左旋，变成左三，然后再p=爷爷右旋
-	// todo 针对爷爷（黑）.right（红）.left（红）=我的情况，....
-	// todo 用图形分每种情况讨论
-	// todo 用图形分每种情况讨论
-	// todo 用图形分每种情况讨论
+	// [1]（二三四树原来有1个节点），新加一个红，上黑下红，不变
+	if global.NewUpNode.Parent.IsRed == false { // 新加节点or上升上来的 的父亲黑色就不用旋转 ==》结束
+		return
+	}
+
+	// 到这里，必然上下双红
+	if global.NewUpNode.Parent.Left == nil || global.NewUpNode.Parent.Right == nil { // 没叔叔
+		// [2]没叔叔，（二三四树原来有2个节点），新加一个红
+		if global.NewUpNode.Parent.Parent.Left == global.NewUpNode.Parent { // 没叔叔+爸爸在爷爷左手
+			/* [2.1.1]左三，爷左右，黑红红=》父亲支点左旋=》爷左左，黑红红
+			 * [2.1.2]左三，爷左左，黑红红=》爷爷支点右旋=》上黑两下红。
+			 *
+			 *   gB               gB            srR               srB
+			 *   /    flR左旋     /   gB右旋    /   \  父黑爷孙红    /   \
+			 *  flR     ==>    srR     ==>  flR     gB  ==>      flR   gR
+			 *   \             /
+			 *   srR         flR
+			 */
+			if global.NewUpNode.Parent.Right == global.NewUpNode { // [2.1.1]我在爸爸右手，flR左旋
+				err = LeftRotate(global.NewUpNode.Parent)
+				if err != nil {
+					fmt.Println(err)
+				}
+				global.NewUpNode = global.NewUpNode.Left // 模拟新加的基准点，向左下移一下
+			}
+			err = RightRotate(global.NewUpNode.Parent.Parent) // [2.1.2]左三，爷左左，黑红红=》爷爷支点右旋=》上黑两下红。
+			if err != nil {
+				fmt.Println(err)
+			}
+			global.NewUpNode.Parent.IsRed = false      // =》上黑两下红。
+			global.NewUpNode.Parent.Right.IsRed = true // =》上黑两下红。
+		} else { // 没叔叔+爸爸在爷爷右手
+			/* [2.2.1]右三，爷右左，黑红红=》父亲支点右旋=》爷右右，黑红红
+			 * [2.2.2]右三，爷右右，黑红红=》爷爷支点左旋=》上黑两下红。
+			 *
+			 *   gB           gB            slR                  slB
+			 *    \   frR右旋  \   gB左旋    /   \   父黑爷孙红    /    \
+			 *    frR  ==>    slR   ==>  gB     frR   ==>     gR     frR
+			 *    /             \
+			 *   slR            frR
+			 */
+			if global.NewUpNode.Parent.Right == global.NewUpNode { // [2.2.1]我在爸爸左手，frR右旋
+				err = RightRotate(global.NewUpNode.Parent)
+				if err != nil {
+					fmt.Println(err)
+				}
+				global.NewUpNode = global.NewUpNode.Right // 模拟新加的基准点，向右下移一下
+			}
+			err = LeftRotate(global.NewUpNode.Parent.Parent) // [2.2.2]右三，爷右右，黑红红=》爷爷支点左旋=》上黑两下红。
+			if err != nil {
+				fmt.Println(err)
+			}
+			global.NewUpNode.Parent.IsRed = false     // =》上黑两下红。
+			global.NewUpNode.Parent.Left.IsRed = true // =》上黑两下红。
+		}
+	} else { // 有叔叔
+		// [3]有叔叔，（二三四树原来有3个节点），新加一个红.原中位节点上升。相当于有叔叔
+		// [3]若爷红，父叔黑，颜色不变===》结束（这个前面讨论过，不会在这里出来呢）
+		if global.NewUpNode.Parent.Parent.Left == global.NewUpNode.Parent { // 有叔叔+爸爸在爷爷左手
+			/* [3.1.1]父在左，若爷黑，父红，爷左右，黑红红=》父亲支点左旋=》爷左左，黑红红
+			 * [3.1.2]父在左，若爷黑，父红，爷左左，黑红红=》爷爷支点右旋=》父黑爷孙红。
+			 *
+			 *   gB                  gB              srR               srR
+			 *   / \     flR左旋     / \    gB右旋    / \     父黑爷孙红  / \
+			 * flR  urR    ==>    srR  urR  ==>    flR  gB     ==>   flB  gB
+			 *   \                /                      \                 \
+			 *   srR            flR                      urR               urR
+			 */
+			if global.NewUpNode.Parent.Right == global.NewUpNode { // [3.1.1]我在爸爸右手，flR左旋
+				err = LeftRotate(global.NewUpNode.Parent)
+				if err != nil {
+					fmt.Println(err)
+				}
+				global.NewUpNode = global.NewUpNode.Left // 模拟新加的基准点，向左下移一下
+			}
+			err = RightRotate(global.NewUpNode.Parent.Parent) // [3.1.2]父在左，若爷黑，父红，爷左左，黑红红=》爷爷支点右旋=》父黑爷孙红。
+			if err != nil {
+				fmt.Println(err)
+			}
+			global.NewUpNode.IsRed = false // =》我黑。只改一个色=》父黑爷孙红
+		} else { // 有叔叔+爸爸在爷爷右手
+			/* [3.2.1]父在右，若爷黑，父红，爷右左，黑红红=》父亲支点右旋=》爷右右，黑红红
+			 * [3.2.2]父在右，若爷黑，父红，爷右右，黑红红=》爷爷支点左旋=》父黑爷孙红。
+			 *
+			 *   gB                  gB              slR                  slR
+			 *   / \     frR右旋     / \    gB左旋    / \   父叔黑爷孙红     / \
+			 * ulR  frR    ==>    ulR  slR  ==>    gB  frR     ==>      gB  frB
+			 *      /                   \           /                    /
+			 *   slR                    frR       ulR                  ulR
+			 */
+			if global.NewUpNode.Parent.Right == global.NewUpNode { // [3.2.1]我在爸爸左手，frR右旋
+				err = RightRotate(global.NewUpNode.Parent)
+				if err != nil {
+					fmt.Println(err)
+				}
+				global.NewUpNode = global.NewUpNode.Right // 模拟新加的基准点，向右下移一下
+			}
+			err = LeftRotate(global.NewUpNode.Parent.Parent) // [3.2.2]父在右，若爷黑，父红，爷右右，黑红红=》爷爷支点左旋=》父黑爷孙红。
+			if err != nil {
+				fmt.Println(err)
+			}
+			global.NewUpNode.IsRed = false // =》我黑。只改一个色=》父黑爷孙红
+		}
+	}
+
+	// 然后，看爷爷，和太爷爷，双红就递归。要提前定义好global.NewUpNode
+	global.NewUpNode = global.NewUpNode.Parent // 重新定义global.NewUpNode。四种情况，都是一样的语句
+	if !global.NewUpNode.IsRed {               // 新up节点黑，返回
+		return
+	}
+	if global.NewUpNode.Parent == nil || global.NewUpNode.Parent.IsRed { // 新up节点是根 or up的父亲红，递归
+		FixAfterPut() // 递归
+	}
+	fmt.Println("意外，执行了FixAfterPut()递归的最后一个return")
 	return
 }
 
@@ -151,7 +257,6 @@ func ShowTreeColor(r *rbtmodels.RBTNode) {
 	//nowLevel := 0               // 当前层数
 	//nnn := Name
 	//nowColumn := 0 // 当前列
-	fmt.Printf("展示树：[左子]本(父)[右子]\n")
 	if r == nil {
 		fmt.Println("这个树/分支是空的")
 	}
@@ -162,13 +267,15 @@ func ShowTreeColor(r *rbtmodels.RBTNode) {
 		//nowColumn = 0                                         // 当前列
 		countNotNil := 0                                      // 本层非nil个数，==0 表示上一层是最后一层
 		for j := 0; j < int(math.Pow(2, float64(i-1))); j++ { // 上层应有的元素数量，遍历，本层翻倍
-			if data[i-1][j].Left != nil {
-				countNotNil++
-				data[i][j*2] = data[i-1][j].Left // 上层左儿子，放入
-			}
-			if data[i-1][j].Right != nil {
-				countNotNil++
-				data[i][j*2+1] = data[i-1][j].Right // 上层右儿子，放入
+			if data[i-1][j] != nil {
+				if data[i-1][j].Left != nil {
+					countNotNil++
+					data[i][j*2] = data[i-1][j].Left // 上层左儿子，放入
+				}
+				if data[i-1][j].Right != nil {
+					countNotNil++
+					data[i][j*2+1] = data[i-1][j].Right // 上层右儿子，放入
+				}
 			}
 		}
 		if countNotNil == 0 { // 本层无元素，中断，退出
@@ -191,11 +298,11 @@ func ShowTreeColor(r *rbtmodels.RBTNode) {
 func ShowOneNodeColor(n *rbtmodels.RBTNode, totalLevel, i, j int) {
 	// blank=blankLeft+n*(位长global.KeyLen+1)
 	blankNil := "" // 空节点，也占位置
-	for k := 0; k < global.KeyLen+1; k++ {
+	for k := 0; k < global.KeyLen+2; k++ {
 		blankNil = blankNil + " "
 	}
-	blankLeftHead := ""                                                               //                                                    // 总体左边空
-	blankMiddleLen := int(math.Pow(2, float64(totalLevel-i-1))) * (global.KeyLen + 2) // 中间空
+	blankLeftHead := ""                                                             //                                                    // 总体左边空
+	blankMiddleLen := int(math.Pow(2, float64(totalLevel-i)))*(global.KeyLen+2) - 4 // 中间空
 	blankLeftLen := blankMiddleLen / 2
 	blankLeft := "" // 最左空的
 	for k := 0; k < blankLeftLen; k++ {
@@ -222,35 +329,6 @@ func ShowOneNodeColor(n *rbtmodels.RBTNode, totalLevel, i, j int) {
 		}
 	}
 
-}
-
-// ShowOneNodeLine 彩色展示单个节点
-func ShowOneNodeLine(n *rbtmodels.RBTNode) {
-	fmt.Printf(" , ")  // 左右分割
-	if n.Left == nil { // 左儿子KEY
-		fmt.Printf("[ ]")
-	} else {
-		fmt.Printf("[%d]", n.Left.Key)
-	}
-
-	fmt.Printf("%d", n.Key) // 本节点KEY
-	if n.IsRed == true {    // 本节点是红色
-		fmt.Printf("R")
-	} else { // 黑色
-		fmt.Printf("B")
-	}
-
-	if n.Parent == nil { // 父节点KEY
-		fmt.Printf("( )")
-	} else {
-		fmt.Printf("(%d)", n.Parent.Key)
-	}
-
-	if n.Right == nil { // 右节点KEY
-		fmt.Printf("[ ]")
-	} else {
-		fmt.Printf("[%d]", n.Right.Key)
-	}
 }
 
 // ShowTree 逐层显示这个树，回头废止。感觉需要递归、队列
@@ -342,9 +420,9 @@ func LeftRotate(p *rbtmodels.RBTNode) (err error) {
 	pr := p.Right      // 右儿子（升级）
 	rl := pr.Left      // 右儿子的左孙子（断枝重连）
 
-	// 下来的P ==》红 ；上去的pr ==》黑
-	p.IsRed = true
-	pr.IsRed = false
+	//// 下来的P ==》红 ；上去的pr ==》黑
+	//p.IsRed = true
+	//pr.IsRed = false
 
 	// 下方需要判断 p 是否root
 	if parent != nil { // p不是root，，还需要分析，p在父亲的左还是右
@@ -398,9 +476,9 @@ func RightRotate(p *rbtmodels.RBTNode) (err error) {
 	pl := p.Left       // 左儿子（升级）
 	lr := pl.Right     // 左儿子的右孙子（断枝重连）
 
-	// 下来的P ==》红 ；上去的pl ==》黑
-	p.IsRed = true
-	pl.IsRed = false
+	//// 下来的P ==》红 ；上去的pl ==》黑
+	//p.IsRed = true
+	//pl.IsRed = false
 
 	// 下方需要判断 p 是否root
 	if parent != nil { // p不是root，，还需要分析，p在父亲的左还是右
@@ -430,68 +508,69 @@ func RightRotate(p *rbtmodels.RBTNode) (err error) {
 	return err
 }
 
-// PreOrder 前序遍历：中左右 就是先访问根节点，再访问左节点，最后访问右节点，
-func PreOrder(node *bstmodels.Hero) {
-	if node != nil {
-		//fmt.Printf("No:%d;Label:%s;Left:%v;Right:%v\n", node.No, node.Label, node.Left, node.Right)
-		fmt.Println(node.No, node.Name, node.Left, node.Right)
-		PreOrder(node.Left)
-		PreOrder(node.Right)
-	}
-	return
-}
-
-// InfixOrder 中序遍历：左中右 所谓的中序遍历就是先访问左节点，再访问根节点，最后访问右节点，
-func InfixOrder(node *bstmodels.Hero) {
-	if node != nil {
-		InfixOrder(node.Left)
-		//fmt.Printf("No:%d;Label:%s;Left:%v;Right:%v\n", node.No, node.Label, node.Left, node.Right)
-		fmt.Println(node.No, node.Name, node.Left, node.Right)
-		InfixOrder(node.Right)
-	}
-	return
-}
-
-// PostOrder 后序遍历：左右中 所谓的后序遍历就是先访问左节点，再访问右节点，最后访问根节点。
-func PostOrder(node *bstmodels.Hero) {
-	if node != nil {
-		PostOrder(node.Left)
-		PostOrder(node.Right)
-		//fmt.Printf("No:%d;Label:%s;Left:%v;Right:%v\n", node.No, node.Label, node.Left, node.Right)
-		fmt.Println(node.No, node.Name, node.Left, node.Right)
-	}
-	return
-}
-
-// LevelOrder 层序遍历：按层，左右
-// 弄一个指针切片，仿队列，①显示left，②left进队列，③显示right，④right进队列；取队列下一个指针；
-func LevelOrder(node *bstmodels.Hero) {
-	if node == nil {
-		fmt.Println("这是个空树！")
-		return
-	}
-	// 定义一些准全局便利性+函数
-	nodeQueue := make([]bstmodels.Hero, 0, 100) // 切片仿队列
-	queueHead := 0                              // 队列的头
-	queueTail := 0                              // 队列的尾巴
-	travel := func() {
-		curNode := nodeQueue[queueHead] // 当前、刚取出来的节点
-		queueHead++                     // 队列头修正
-		fmt.Println(curNode)
-		if curNode.Left != nil {
-			nodeQueue = append(nodeQueue, *curNode.Left) // 压入队列
-			queueTail++                                  // 队列尾巴修正
-		}
-		if curNode.Right != nil {
-			nodeQueue = append(nodeQueue, *curNode.Right) // 压入队列
-			queueTail++                                   // 队列尾巴修正
-		}
-	}
-
-	// 开始程序
-	nodeQueue = append(nodeQueue, *node) // 压入队列
-	queueTail++                          // 队列尾巴修正
-	for queueTail-queueHead > 0 {
-		travel()
-	}
-}
+//
+//// PreOrder 前序遍历：中左右 就是先访问根节点，再访问左节点，最后访问右节点，
+//func PreOrder(node *bstmodels.Hero) {
+//	if node != nil {
+//		//fmt.Printf("No:%d;Label:%s;Left:%v;Right:%v\n", node.No, node.Label, node.Left, node.Right)
+//		fmt.Println(node.No, node.Name, node.Left, node.Right)
+//		PreOrder(node.Left)
+//		PreOrder(node.Right)
+//	}
+//	return
+//}
+//
+//// InfixOrder 中序遍历：左中右 所谓的中序遍历就是先访问左节点，再访问根节点，最后访问右节点，
+//func InfixOrder(node *bstmodels.Hero) {
+//	if node != nil {
+//		InfixOrder(node.Left)
+//		//fmt.Printf("No:%d;Label:%s;Left:%v;Right:%v\n", node.No, node.Label, node.Left, node.Right)
+//		fmt.Println(node.No, node.Name, node.Left, node.Right)
+//		InfixOrder(node.Right)
+//	}
+//	return
+//}
+//
+//// PostOrder 后序遍历：左右中 所谓的后序遍历就是先访问左节点，再访问右节点，最后访问根节点。
+//func PostOrder(node *bstmodels.Hero) {
+//	if node != nil {
+//		PostOrder(node.Left)
+//		PostOrder(node.Right)
+//		//fmt.Printf("No:%d;Label:%s;Left:%v;Right:%v\n", node.No, node.Label, node.Left, node.Right)
+//		fmt.Println(node.No, node.Name, node.Left, node.Right)
+//	}
+//	return
+//}
+//
+//// LevelOrder 层序遍历：按层，左右
+//// 弄一个指针切片，仿队列，①显示left，②left进队列，③显示right，④right进队列；取队列下一个指针；
+//func LevelOrder(node *bstmodels.Hero) {
+//	if node == nil {
+//		fmt.Println("这是个空树！")
+//		return
+//	}
+//	// 定义一些准全局便利性+函数
+//	nodeQueue := make([]bstmodels.Hero, 0, 100) // 切片仿队列
+//	queueHead := 0                              // 队列的头
+//	queueTail := 0                              // 队列的尾巴
+//	travel := func() {
+//		curNode := nodeQueue[queueHead] // 当前、刚取出来的节点
+//		queueHead++                     // 队列头修正
+//		fmt.Println(curNode)
+//		if curNode.Left != nil {
+//			nodeQueue = append(nodeQueue, *curNode.Left) // 压入队列
+//			queueTail++                                  // 队列尾巴修正
+//		}
+//		if curNode.Right != nil {
+//			nodeQueue = append(nodeQueue, *curNode.Right) // 压入队列
+//			queueTail++                                   // 队列尾巴修正
+//		}
+//	}
+//
+//	// 开始程序
+//	nodeQueue = append(nodeQueue, *node) // 压入队列
+//	queueTail++                          // 队列尾巴修正
+//	for queueTail-queueHead > 0 {
+//		travel()
+//	}
+//}
