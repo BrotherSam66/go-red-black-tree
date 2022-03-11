@@ -130,96 +130,114 @@ func FixAfterPut() {
 		return
 	}
 
-	// [3.1] 父红，叔红(不能空，空算黑)， ==》爷红，父叔黑，爷爷变为当前节点 ==》递归
-	/*    gB            gR
-	 *   /  \          /  \
-	 * flR  urR  ==> flB  urB
-	 *   \             \
-	 *   srR           srR
-	 */
-	if global.NewUpNode.Parent.Parent.Left != nil && global.NewUpNode.Parent.Parent.Right != nil { // 确保有叔叔
-		if global.NewUpNode.Parent.Parent.Left.IsRed && global.NewUpNode.Parent.Parent.Right.IsRed {
-			global.NewUpNode.Parent.Parent.Left.IsRed = false  // 父叔黑
-			global.NewUpNode.Parent.Parent.Right.IsRed = false // 父叔黑
-			global.NewUpNode.Parent.Parent.IsRed = true        // 爷红
-			global.NewUpNode = global.NewUpNode.Parent.Parent  // 爷爷变为当前节点 ==》递归
-			FixAfterPut()                                      // 递归
-			return
-		}
-	}
-
-	// 到这里，叔叔必然黑(或空)
-	if global.NewUpNode.Parent.Parent.Left == global.NewUpNode.Parent { // [4.1] 父在爷左手
-		// [4.1] 父在爷左手
-		// [4.1.1] 父flR红，叔黑(空也算黑)，我在右， ==》以父flR为P左旋，原父flR做当前系欸但 ==》递归
-		// [4.1.2] 父srR红，叔黑(空也算黑)，我在左(其实[4.1.1]递归过来就是这个)， ==》父黑爷红，以爷爷gB为P右旋，
-		//       ==》原爷爷的右手做当前节点，黑就结束，红就递归原
-		/*   gB                   gB              srR                 srB
-		 *   /  \     flR左旋     /  \   gB右旋    /   \  父黑爷孙红    /   \  ==> BRB
-		 *  flR urB    ==>    srR   urB  ==>  flR     gB  ==>      flR   gR
-		 *   \                /                        \                  \
-		 *   srR            flR                        urB                urB
-		 */
-		if global.NewUpNode.Parent.Right == global.NewUpNode { // [2.1.1]我在爸爸右手，flR左旋
-			err = LeftRotate(global.NewUpNode.Parent)
+	// 到这里，必然上下双红
+	if global.NewUpNode.Parent.Left == nil || global.NewUpNode.Parent.Right == nil { // 没叔叔
+		// [2]没叔叔，（二三四树原来有2个节点），新加一个红
+		if global.NewUpNode.Parent.Parent.Left == global.NewUpNode.Parent { // 没叔叔+爸爸在爷爷左手
+			/* [2.1.1]左三，爷左右，黑红红=》父亲支点左旋=》爷左左，黑红红
+			 * [2.1.2]左三，爷左左，黑红红=》爷爷支点右旋=》上黑两下红。
+			 *
+			 *   gB               gB            srR               srB
+			 *   /    flR左旋     /   gB右旋    /   \  父黑爷孙红    /   \
+			 *  flR     ==>    srR     ==>  flR     gB  ==>      flR   gR
+			 *   \             /
+			 *   srR         flR
+			 */
+			if global.NewUpNode.Parent.Right == global.NewUpNode { // [2.1.1]我在爸爸右手，flR左旋
+				err = LeftRotate(global.NewUpNode.Parent)
+				if err != nil {
+					fmt.Println(err)
+				}
+				global.NewUpNode = global.NewUpNode.Left // 模拟新加的基准点，向左下移一下
+			}
+			err = RightRotate(global.NewUpNode.Parent.Parent) // [2.1.2]左三，爷左左，黑红红=》爷爷支点右旋=》上黑两下红。
 			if err != nil {
 				fmt.Println(err)
 			}
-			global.NewUpNode = global.NewUpNode.Left // 模拟新加的基准点，向左下移一下
-			FixAfterPut()                            // 递归
-			return
-		}
-		// 到这里一定是[4.1.2] 父srR红，叔黑(空也算黑)，我在左(其实[4.1.1]递归过来就是这个)， ==》父黑爷红，以爷爷gB为P右旋，
-		//		==》原爷爷的右手做当前节点，黑就结束，红就递归原
-		err = RightRotate(global.NewUpNode.Parent.Parent) // 以爷爷gB为P右旋。
-		if err != nil {
-			fmt.Println(err)
-		}
-		global.NewUpNode.IsRed = false // =》我变黑。结束
-		return
-	} else { // [4.2] 父在爷右手
-		// [4.2] 父在爷左手
-		// [4.2.1] 父frR红，叔黑(空也算黑)，我在左， ==》以父frR为P右旋，原父frR做当前系欸但 ==》递归
-		// [4.2.2] 父srR红，叔黑(空也算黑)，我在左(其实[4.1.1]递归过来就是这个)， ==》父黑爷红，以爷爷gB为P右旋，
-		//       ==》原爷爷的右手做当前节点，黑就结束，红就递归原
-
-		/* [2.2.1]右三，爷右左，黑红红=》父亲支点右旋=》爷右右，黑红红
-		 * [2.2.2]右三，爷右右，黑红红=》爷爷支点左旋=》上黑两下红。
-		 *
-		 *    gB             gB             slR                  slB
-		 *   / \   frR右旋   /  \    gB左旋  /   \   父黑爷孙红    /    \  ==> BRB
-		 * ulB  frR  ==>   ulB slR   ==>  gB     frR   ==>     gR     frR
-		 *     /                \        /
-		 *    slR               frR    ulB
-		 */
-		if global.NewUpNode.Parent.Left == global.NewUpNode { // [4.2.1] 父frR红，叔黑(空也算黑)，我在左，
-			err = RightRotate(global.NewUpNode.Parent)
+			global.NewUpNode.Parent.IsRed = false      // =》上黑两下红。
+			global.NewUpNode.Parent.Right.IsRed = true // =》上黑两下红。
+		} else { // 没叔叔+爸爸在爷爷右手
+			/* [2.2.1]右三，爷右左，黑红红=》父亲支点右旋=》爷右右，黑红红
+			 * [2.2.2]右三，爷右右，黑红红=》爷爷支点左旋=》上黑两下红。
+			 *
+			 *   gB           gB            slR                  slB1
+			 *    \   frR右旋  \   gB左旋    /   \   父黑爷孙红    /    \
+			 *    frR  ==>    slR   ==>  gB     frR   ==>     gR     frR
+			 *    /             \
+			 *   slR            frR
+			 */
+			if global.NewUpNode.Parent.Left == global.NewUpNode { // [2.2.1]我在爸爸左手，frR右旋
+				err = RightRotate(global.NewUpNode.Parent)
+				if err != nil {
+					fmt.Println(err)
+				}
+				global.NewUpNode = global.NewUpNode.Right // 模拟新加的基准点，向右下移一下
+			}
+			err = LeftRotate(global.NewUpNode.Parent.Parent) // [2.2.2]右三，爷右右，黑红红=》爷爷支点左旋=》上黑两下红。
 			if err != nil {
 				fmt.Println(err)
 			}
-			global.NewUpNode = global.NewUpNode.Right // 模拟新加的基准点，向右下移一下
-			FixAfterPut()                             // 递归
-			return
+			global.NewUpNode.Parent.IsRed = false     // =》上黑两下红。
+			global.NewUpNode.Parent.Left.IsRed = true // =》上黑两下红。
 		}
-		// 到这里一定是[4.2.2] 父slR红，叔黑(空也算黑)，我在右(其实[4.2.1]递归过来就是这个)， ==》父黑爷红，以爷爷gB为P左旋，
-		//		==》原爷爷的右手做当前节点，黑就结束，红就递归原
-		err = LeftRotate(global.NewUpNode.Parent.Parent) // 以爷爷gB为P左旋，
-		if err != nil {
-			fmt.Println(err)
+	} else { // 有叔叔
+		// [3]有叔叔，（二三四树原来有3个节点），新加一个红.原中位节点上升。相当于有叔叔
+		// [3]若爷红，父叔黑，颜色不变===》结束（这个前面讨论过，不会在这里出来呢）
+		if global.NewUpNode.Parent.Parent.Left == global.NewUpNode.Parent { // 有叔叔+爸爸在爷爷左手
+			/* [3.1.1]父在左，若爷黑，父红，爷左右，黑红红=》父亲支点左旋=》爷左左，黑红红
+			 * [3.1.2]父在左，若爷黑，父红，爷左左，黑红红=》爷爷支点右旋=》父黑爷孙红。
+			 *
+			 *   gB                  gB              srR               srR
+			 *   / \     flR左旋     / \    gB右旋    / \     父黑爷孙红  / \
+			 * flR  urR    ==>    srR  urR  ==>    flR  gB     ==>   flB  gB
+			 *   \                /                      \                 \
+			 *   srR            flR                      urR               urR
+			 */
+			if global.NewUpNode.Parent.Right == global.NewUpNode { // [3.1.1]我在爸爸右手，flR左旋
+				err = LeftRotate(global.NewUpNode.Parent)
+				if err != nil {
+					fmt.Println(err)
+				}
+				global.NewUpNode = global.NewUpNode.Left // 模拟新加的基准点，向左下移一下
+			}
+			err = RightRotate(global.NewUpNode.Parent.Parent) // [3.1.2]父在左，若爷黑，父红，爷左左，黑红红=》爷爷支点右旋=》父黑爷孙红。
+			if err != nil {
+				fmt.Println(err)
+			}
+			global.NewUpNode.IsRed = false // =》我黑。只改一个色=》父黑爷孙红
+		} else { // 有叔叔+爸爸在爷爷右手
+			/* [3.2.1]父在右，若爷黑，父红，爷右左，黑红红=》父亲支点右旋=》爷右右，黑红红
+			 * [3.2.2]父在右，若爷黑，父红，爷右右，黑红红=》爷爷支点左旋=》父黑爷孙红。
+			 *
+			 *   gB                  gB              slR                  slR
+			 *   / \     frR右旋     / \    gB左旋    / \   父叔黑爷孙红     / \
+			 * ulR  frR    ==>    ulR  slR  ==>    gB  frR     ==>      gB  frB
+			 *      /                   \           /                    /
+			 *   slR                    frR       ulR                  ulR
+			 */
+			if global.NewUpNode.Parent.Right == global.NewUpNode { // [3.2.1]我在爸爸左手，frR右旋
+				err = RightRotate(global.NewUpNode.Parent)
+				if err != nil {
+					fmt.Println(err)
+				}
+				global.NewUpNode = global.NewUpNode.Right // 模拟新加的基准点，向右下移一下
+			}
+			err = LeftRotate(global.NewUpNode.Parent.Parent) // [3.2.2]父在右，若爷黑，父红，爷右右，黑红红=》爷爷支点左旋=》父黑爷孙红。
+			if err != nil {
+				fmt.Println(err)
+			}
+			global.NewUpNode.IsRed = false // =》我黑。只改一个色=》父黑爷孙红
 		}
-		global.NewUpNode.Parent.IsRed = false     // =》原父亲黑。
-		global.NewUpNode.Parent.Left.IsRed = true // =》原爷爷红。
-		return
 	}
 
-	//// 然后，看爷爷，和太爷爷，双红就递归。要提前定义好global.NewUpNode
-	//global.NewUpNode = global.NewUpNode.Parent // 重新定义global.NewUpNode。四种情况，都是一样的语句
-	//if !global.NewUpNode.IsRed {               // 新up节点黑，返回
-	//	return
-	//}
-	//if global.NewUpNode.Parent == nil || global.NewUpNode.Parent.IsRed { // 新up节点是根 or up的父亲红，递归
-	//	FixAfterPut() // 递归
-	//}
+	// 然后，看爷爷，和太爷爷，双红就递归。要提前定义好global.NewUpNode
+	global.NewUpNode = global.NewUpNode.Parent // 重新定义global.NewUpNode。四种情况，都是一样的语句
+	if !global.NewUpNode.IsRed {               // 新up节点黑，返回
+		return
+	}
+	if global.NewUpNode.Parent == nil || global.NewUpNode.Parent.IsRed { // 新up节点是根 or up的父亲红，递归
+		FixAfterPut() // 递归
+	}
 	fmt.Println("意外，执行了FixAfterPut()递归的最后一个return")
 	return
 }
