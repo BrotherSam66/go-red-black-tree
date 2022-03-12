@@ -6,7 +6,6 @@ import (
 	"go-red-black-tree/global"
 	"go-red-black-tree/rbtmodels"
 	"math"
-	"os"
 )
 
 // RBTDemo 红黑树演示
@@ -68,14 +67,6 @@ func RBTInput() {
 		var key int
 		fmt.Println("请输入KEY，按回车键(0退出)：")
 		fmt.Scanln(&key)
-
-		if key == 0 {
-			os.Exit(0)
-		}
-		if key > 99 || key < 1 {
-			fmt.Println("必须是0~~99")
-			continue
-		}
 		Put(key, "")
 		ShowTreeColor(global.Root)
 	}
@@ -162,10 +153,10 @@ func FixAfterPut() {
 		// [4.1] 父在爷左手
 		// [4.1.1] 父flR红，叔黑(空也算黑)，我在右， ==》以父flR为P左旋，原父flR做当前系欸但 ==》递归
 		// [4.1.2] 父srR红，叔黑(空也算黑)，我在左(其实[4.1.1]递归过来就是这个)， ==》父黑爷红，以爷爷gB为P右旋，
-		//       ==》新爷爷变红，父叔边喝，爷爷作为新节点递归
-		/*   gB                   gB              srR                 srR
-		 *   /  \     flR左旋     /  \   gB右旋    /   \  父黑爷孙红    /   \
-		 *  flR urB    ==>    srR   urB  ==>  flR     gB  ==>      flB   gB
+		//       ==》原爷爷的右手做当前节点，黑就结束，红就递归原
+		/*   gB                   gB              srR                 srB
+		 *   /  \     flR左旋     /  \   gB右旋    /   \  父黑爷孙红    /   \  ==> BRB
+		 *  flR urB    ==>    srR   urB  ==>  flR     gB  ==>      flR   gR
 		 *   \                /                        \                  \
 		 *   srR            flR                        urB                urB
 		 */
@@ -174,7 +165,7 @@ func FixAfterPut() {
 			if err != nil {
 				fmt.Println(err)
 			}
-			global.NewUpNode = global.NewUpNode.Left // 模拟新加的基准点，向左下移一下，递归
+			global.NewUpNode = global.NewUpNode.Left // 模拟新加的基准点，向左下移一下
 			FixAfterPut()                            // 递归
 			return
 		}
@@ -184,22 +175,20 @@ func FixAfterPut() {
 		if err != nil {
 			fmt.Println(err)
 		}
-		global.NewUpNode.IsRed = false             // =》我flR变黑
-		global.NewUpNode = global.NewUpNode.Parent // 我的父亲(新的爷爷是红)，作为新节点递归
-		FixAfterPut()                              // 递归
+		global.NewUpNode.IsRed = false // =》我变黑。结束
 		return
 	} else { // [4.2] 父在爷右手
 		// [4.2] 父在爷左手
 		// [4.2.1] 父frR红，叔黑(空也算黑)，我在左， ==》以父frR为P右旋，原父frR做当前系欸但 ==》递归
 		// [4.2.2] 父srR红，叔黑(空也算黑)，我在左(其实[4.1.1]递归过来就是这个)， ==》父黑爷红，以爷爷gB为P右旋，
-		//       ==》新爷爷变红，父叔边喝，爷爷作为新节点递归
+		//       ==》原爷爷的右手做当前节点，黑就结束，红就递归原
 
 		/* [2.2.1]右三，爷右左，黑红红=》父亲支点右旋=》爷右右，黑红红
 		 * [2.2.2]右三，爷右右，黑红红=》爷爷支点左旋=》上黑两下红。
 		 *
-		 *    gB             gB             slR                  slR
-		 *   / \   frR右旋   /  \    gB左旋  /   \   父黑爷孙红    /    \
-		 * ulB  frR  ==>   ulB slR   ==>  gB     frR   ==>     gB     frB
+		 *    gB             gB             slR                  slB
+		 *   / \   frR右旋   /  \    gB左旋  /   \   父黑爷孙红    /    \  ==> BRB
+		 * ulB  frR  ==>   ulB slR   ==>  gB     frR   ==>     gR     frR
 		 *     /                \        /
 		 *    slR               frR    ulB
 		 */
@@ -218,10 +207,8 @@ func FixAfterPut() {
 		if err != nil {
 			fmt.Println(err)
 		}
-
-		global.NewUpNode.IsRed = false             // =》我frR变黑
-		global.NewUpNode = global.NewUpNode.Parent // 我的父亲(新的爷爷是红)，作为新节点递归
-		FixAfterPut()                              // 递归
+		global.NewUpNode.Parent.IsRed = false     // =》原父亲黑。
+		global.NewUpNode.Parent.Left.IsRed = true // =》原爷爷红。
 		return
 	}
 
@@ -281,13 +268,13 @@ func ShowTreeColor(r *rbtmodels.RBTNode) {
 		totalLevel++ // 总层数
 	}
 
-	// 二次循环，数据导入dataTemp，一组占3列，父亲骑在2个儿子中间
+	// 二次循环，数据导入dataTemp，数据压在右儿子上头
 	for i := 0; i < totalLevel; i++ { // 循环每一层
-		blankMiddleLen := int(math.Pow(2, float64(totalLevel-i))) - 1 // 中间空
-		blankLeftLen := (blankMiddleLen - 1) / 2
+		blankMiddleLen := int(math.Pow(2, float64(totalLevel-i-1))) // 中间空
+		blankLeftLen := blankMiddleLen / 2
 
-		for j := 0; j < int(math.Pow(2, float64(i))*1.5); j++ { // 上层应有的元素数量，遍历，本层翻倍
-			dataTemp[i][blankLeftLen+j*(blankMiddleLen+1)+1] = data[i][j]
+		for j := 0; j < int(math.Pow(2, float64(i))); j++ { // 上层应有的元素数量，遍历，本层翻倍
+			dataTemp[i][blankLeftLen+j*blankMiddleLen] = data[i][j]
 			//fmt.Printf("i== %d ,j== %d ,totalLevel== %d ,blankMiddleLen== %d ,blankLeftLen== %d \n", i, j, totalLevel, blankMiddleLen, blankLeftLen)
 		}
 	}
@@ -295,20 +282,8 @@ func ShowTreeColor(r *rbtmodels.RBTNode) {
 	// 三次循环，把每层数据展示出来，
 	for i := 0; i < totalLevel; i++ { // 循环每一层
 		for j := 0; j < int(math.Pow(2, float64(totalLevel))); j++ { // 应有的元素数量
-
-			// 查本列是否全nil
-			isAllNil := true // 本列全nil
-			for k := 0; k < totalLevel; k++ {
-				if dataTemp[k][j] != nil {
-					isAllNil = false
-				}
-			}
-			if !isAllNil { // 只有本列不是全nil，才show一下
-				ShowOneNodeColorNew(dataTemp[i][j], totalLevel, i, j)
-			}
-			//ShowOneNodeColorNew(dataTemp[i][j], totalLevel, i, j)
+			ShowOneNodeColorNew(dataTemp[i][j], totalLevel, i, j)
 		}
-
 		fmt.Println()
 	}
 
@@ -327,7 +302,7 @@ func ShowOneNodeColorNew(n *rbtmodels.RBTNode, totalLevel, i, j int) {
 
 	// blank=blankLeft+n*(位长global.KeyLen+1)
 	blankNil := "" // 空节点，也占位置
-	for k := 0; k < global.KeyLen; k++ {
+	for k := 0; k < global.KeyLen+1; k++ {
 		blankNil = blankNil + " "
 	}
 
@@ -338,9 +313,9 @@ func ShowOneNodeColorNew(n *rbtmodels.RBTNode, totalLevel, i, j int) {
 		red := 31
 		black := 0
 		if n.IsRed {
-			fmt.Printf("%c[1;0;%dm%02d%c[0m", 0x1B, red, n.Key, 0x1B)
+			fmt.Printf("%c[1;0;%dm%02d %c[0m", 0x1B, red, n.Key, 0x1B)
 		} else {
-			fmt.Printf("%c[1;0;%dm%02d%c[0m", 0x1B, black, n.Key, 0x1B)
+			fmt.Printf("%c[1;0;%dm%02d %c[0m", 0x1B, black, n.Key, 0x1B)
 		}
 	}
 
@@ -378,9 +353,9 @@ func ShowOneNodeColor(n *rbtmodels.RBTNode, totalLevel, i, j int) {
 		red := 31
 		black := 0
 		if n.IsRed {
-			fmt.Printf("%c[1;0;%dm%02d%c[0m", 0x1B, red, n.Key, 0x1B)
+			fmt.Printf("%c[1;0;%dm%02d %c[0m", 0x1B, red, n.Key, 0x1B)
 		} else {
-			fmt.Printf("%c[1;0;%dm%02d%c[0m", 0x1B, black, n.Key, 0x1B)
+			fmt.Printf("%c[1;0;%dm%02d %c[0m", 0x1B, black, n.Key, 0x1B)
 		}
 	}
 
