@@ -3,10 +3,11 @@ package rbtutils
 import (
 	"errors"
 	"fmt"
+	"go-red-black-tree/bstmodels"
 	"go-red-black-tree/global"
 	"go-red-black-tree/rbtmodels"
 	"math"
-	"os"
+	"math/rand"
 )
 
 // RBTDemo 红黑树演示
@@ -61,16 +62,20 @@ func RBTCreat() {
 
 }
 
-// RBTInput 红黑树创建
-func RBTInput() {
+// RBTInputs 红黑树连续插入节点
+func RBTInputs() {
 	//RBTCreat()
 	for {
 		var key int
-		fmt.Println("请输入KEY，按回车键(0退出)：")
+		fmt.Println("请输入KEY，按回车键(空按回车随机，-1退出)：")
 		fmt.Scanln(&key)
 
+		if key == -1 {
+			return
+		}
 		if key == 0 {
-			os.Exit(0)
+			key = rand.Intn(global.MaxKey)
+			fmt.Println(key)
 		}
 		if key > 99 || key < 1 {
 			fmt.Println("必须是0~~99")
@@ -81,7 +86,38 @@ func RBTInput() {
 	}
 }
 
-// Put 红黑树加入一个元素
+// RBTDeletes 红黑树连续删除节点
+func RBTDeletes() {
+
+	for {
+		var key int
+		fmt.Println("请输入KEY，按回车键(空按回车随机，-1退出)：")
+		fmt.Scanln(&key)
+
+		if key == -1 {
+			return
+		}
+		if key == 0 {
+			key = rand.Intn(global.MaxKey)
+			fmt.Println(key)
+		}
+		if key > 99 || key < 1 {
+			fmt.Println("必须是0~~99")
+			continue
+		}
+		node, err := Find(key)
+		if err != nil {
+			fmt.Println("查找错误，error == ", err)
+			continue
+		}
+		Delete(node)
+		ShowTreeColor(global.Root)
+	}
+}
+
+// Put 加入节点
+// @key 插入的键值
+// @label 插入的标签值
 func Put(key int, label string) {
 	if global.Root == nil { // 原树为空树，新加入的转为根、黑色
 		global.Root = rbtmodels.NewRBTNode(false, key, label, nil, nil, nil)
@@ -424,6 +460,10 @@ func ShowTree(r *rbtmodels.RBTNode) {
 
 // ShowOneNode 展示单个节点
 func ShowOneNode(n *rbtmodels.RBTNode) {
+	if n == nil {
+		fmt.Println("[]nil[]")
+		return
+	}
 	fmt.Printf(" , ")  // 左右分割
 	if n.Left == nil { // 左儿子KEY
 		fmt.Printf("[ ]")
@@ -563,69 +603,183 @@ func RightRotate(p *rbtmodels.RBTNode) (err error) {
 	return err
 }
 
-//
-//// PreOrder 前序遍历：中左右 就是先访问根节点，再访问左节点，最后访问右节点，
-//func PreOrder(node *bstmodels.Hero) {
-//	if node != nil {
-//		//fmt.Printf("No:%d;Label:%s;Left:%v;Right:%v\n", node.No, node.Label, node.Left, node.Right)
-//		fmt.Println(node.No, node.Name, node.Left, node.Right)
-//		PreOrder(node.Left)
-//		PreOrder(node.Right)
-//	}
-//	return
-//}
-//
-//// InfixOrder 中序遍历：左中右 所谓的中序遍历就是先访问左节点，再访问根节点，最后访问右节点，
-//func InfixOrder(node *bstmodels.Hero) {
-//	if node != nil {
-//		InfixOrder(node.Left)
-//		//fmt.Printf("No:%d;Label:%s;Left:%v;Right:%v\n", node.No, node.Label, node.Left, node.Right)
-//		fmt.Println(node.No, node.Name, node.Left, node.Right)
-//		InfixOrder(node.Right)
-//	}
-//	return
-//}
-//
-//// PostOrder 后序遍历：左右中 所谓的后序遍历就是先访问左节点，再访问右节点，最后访问根节点。
-//func PostOrder(node *bstmodels.Hero) {
-//	if node != nil {
-//		PostOrder(node.Left)
-//		PostOrder(node.Right)
-//		//fmt.Printf("No:%d;Label:%s;Left:%v;Right:%v\n", node.No, node.Label, node.Left, node.Right)
-//		fmt.Println(node.No, node.Name, node.Left, node.Right)
-//	}
-//	return
-//}
-//
-//// LevelOrder 层序遍历：按层，左右
-//// 弄一个指针切片，仿队列，①显示left，②left进队列，③显示right，④right进队列；取队列下一个指针；
-//func LevelOrder(node *bstmodels.Hero) {
-//	if node == nil {
-//		fmt.Println("这是个空树！")
-//		return
-//	}
-//	// 定义一些准全局便利性+函数
-//	nodeQueue := make([]bstmodels.Hero, 0, 100) // 切片仿队列
-//	queueHead := 0                              // 队列的头
-//	queueTail := 0                              // 队列的尾巴
-//	travel := func() {
-//		curNode := nodeQueue[queueHead] // 当前、刚取出来的节点
-//		queueHead++                     // 队列头修正
-//		fmt.Println(curNode)
-//		if curNode.Left != nil {
-//			nodeQueue = append(nodeQueue, *curNode.Left) // 压入队列
-//			queueTail++                                  // 队列尾巴修正
-//		}
-//		if curNode.Right != nil {
-//			nodeQueue = append(nodeQueue, *curNode.Right) // 压入队列
-//			queueTail++                                   // 队列尾巴修正
-//		}
-//	}
-//
-//	// 开始程序
-//	nodeQueue = append(nodeQueue, *node) // 压入队列
-//	queueTail++                          // 队列尾巴修正
-//	for queueTail-queueHead > 0 {
-//		travel()
-//	}
-//}
+// Find 查找节点
+// @key 键值
+// @n 找到的节点指针
+func Find(key int) (ret *rbtmodels.RBTNode, err error) {
+	tempNode := global.Root
+	for { // 递归循环
+		if tempNode.Key == key { // 等于，找到了
+			return tempNode, nil
+		} else if tempNode.Key > key { // 大于，向左
+			if tempNode.Left == nil { // 到nil了，返没找到
+				return nil, errors.New("没找到！")
+			}
+			tempNode = tempNode.Left // 向左下递归
+		} else { // 小于，向右
+			if tempNode.Right == nil { // 到nil了，返没找到
+				return nil, errors.New("没找到！")
+			}
+			tempNode = tempNode.Right // 向右下递归
+		}
+	}
+	return
+}
+
+// Delete 删除节点
+// @key 键值
+func Delete(deleteNode *rbtmodels.RBTNode) {
+	/*
+	 * 普通二叉树，删除的时候，用前驱节点or后继节点替换(内容)，然后删掉替代节点(替代节点可能有单叶子，把这个单叶子提上来)
+	 * 找前驱，如没有左子树(删除时候用不到这种情形)，就向父亲不断找，直到向左拐弯的地方。
+	 * 找后继，如没有右子树(删除时候用不到这种情形)，就向父亲不断找，直到向右拐弯的地方。
+	 * 找后继，如没有右子树(删除时候用不到这种情形)，就向父亲不断找，直到向右拐弯的地方。
+	 * [1]自己能搞定，相当于234树的三or四节点，删掉低端红色；或删掉高位黑色，唯一儿子变黑上来
+	 * [2]自己搞不定，相当于234树的二节点，删掉唯一黑色后，把父亲借下来，234树的兄弟(多节点)顶上去父亲位置
+	 * [2.1]自己搞不定，相当于234树的二节点，删掉唯一黑色后，把父亲借下来，234树的兄弟(多节点)顶上去父亲位置
+	 * [3]自己搞不定，相当于234树的二节点，删掉唯一黑色后，把父亲借下来，234树的兄弟(二节点)也没得借
+
+	 */
+	//avatarNode := Predecessor(deleteNode) // 用前驱节点做替身
+	//avatarNode := Successor(deleteNode) // 用后继节点做替身
+	ShowOneNode(Predecessor(deleteNode))
+	ShowOneNode(deleteNode)
+	ShowOneNode(Successor(deleteNode))
+	ShowOneNode(deleteNode)
+	fmt.Println()
+	return
+}
+
+// Predecessor 找前驱节点。比我稍小的最大节点
+func Predecessor(n *rbtmodels.RBTNode) (ret *rbtmodels.RBTNode) {
+	if n == nil {
+		fmt.Println("纳尼？让我给一个nil找前驱节点？")
+		return nil
+	}
+	if n.Left != nil { // 有左儿子，找左儿子下面的最大
+		ret = n.Left
+		for {
+			if ret.Right == nil { // 右下nil就算找到了
+				return ret
+			}
+			ret = ret.Right // 沿着右手一直向下
+		}
+	} else { // 没有左儿子，向上找，每个和我比较，到root，返nil
+		if n.Parent == nil { // 没左儿子，自己又是root
+			fmt.Println("这个真没有，没左儿子，自己又是root")
+			return nil
+		}
+		ret = n
+		for {
+			if ret.Parent == nil { // 游标移到本身是root，还没有找到，就nil了
+				return nil
+			} else {
+				if ret.Parent.Key < n.Key { // 某个父辈小于我了，这个就是
+					return ret.Parent
+				}
+			}
+			ret = ret.Parent // 向上一直找
+		}
+	}
+	return
+}
+
+// Successor 找后继节点。比我稍大的最小节点
+func Successor(n *rbtmodels.RBTNode) (ret *rbtmodels.RBTNode) {
+	if n == nil {
+		fmt.Println("纳尼？让我给一个nil找后继节点？")
+		return nil
+	}
+	if n.Right != nil { // 有右儿子，找右儿子下面的最大
+		ret = n.Right
+		for {
+			if ret.Left == nil { // 左下nil就算找到了
+				return ret
+			}
+			ret = ret.Left // 沿着左手一直向下
+		}
+	} else { // 没有右儿子，向上找，每个和我比较，到root，返nil
+		if n.Parent == nil { // 没右儿子，自己又是root
+			fmt.Println("这个真没有，没右儿子，自己又是root")
+			return nil
+		}
+		ret = n
+		for {
+			if ret.Parent == nil { // 游标移到本身是root，还没有找到，就nil了
+				return nil
+			} else {
+				if ret.Parent.Key > n.Key { // 某个父辈小于我了，这个就是
+					return ret.Parent
+				}
+			}
+			ret = ret.Parent // 向上一直找
+		}
+	}
+	return
+}
+
+// PreOrder 前序遍历：中左右 就是先访问根节点，再访问左节点，最后访问右节点，
+func PreOrder(node *bstmodels.Hero) {
+	if node != nil {
+		//fmt.Printf("No:%d;Label:%s;Left:%v;Right:%v\n", node.No, node.Label, node.Left, node.Right)
+		fmt.Println(node.No, node.Name, node.Left, node.Right)
+		PreOrder(node.Left)
+		PreOrder(node.Right)
+	}
+	return
+}
+
+// InfixOrder 中序遍历：左中右 所谓的中序遍历就是先访问左节点，再访问根节点，最后访问右节点，
+func InfixOrder(node *bstmodels.Hero) {
+	if node != nil {
+		InfixOrder(node.Left)
+		//fmt.Printf("No:%d;Label:%s;Left:%v;Right:%v\n", node.No, node.Label, node.Left, node.Right)
+		fmt.Println(node.No, node.Name, node.Left, node.Right)
+		InfixOrder(node.Right)
+	}
+	return
+}
+
+// PostOrder 后序遍历：左右中 所谓的后序遍历就是先访问左节点，再访问右节点，最后访问根节点。
+func PostOrder(node *bstmodels.Hero) {
+	if node != nil {
+		PostOrder(node.Left)
+		PostOrder(node.Right)
+		//fmt.Printf("No:%d;Label:%s;Left:%v;Right:%v\n", node.No, node.Label, node.Left, node.Right)
+		fmt.Println(node.No, node.Name, node.Left, node.Right)
+	}
+	return
+}
+
+// LevelOrder 层序遍历：按层，左右
+// 弄一个指针切片，仿队列，①显示left，②left进队列，③显示right，④right进队列；取队列下一个指针；
+func LevelOrder(node *bstmodels.Hero) {
+	if node == nil {
+		fmt.Println("这是个空树！")
+		return
+	}
+	// 定义一些准全局便利性+函数
+	nodeQueue := make([]bstmodels.Hero, 0, 100) // 切片仿队列
+	queueHead := 0                              // 队列的头
+	queueTail := 0                              // 队列的尾巴
+	travel := func() {
+		curNode := nodeQueue[queueHead] // 当前、刚取出来的节点
+		queueHead++                     // 队列头修正
+		fmt.Println(curNode)
+		if curNode.Left != nil {
+			nodeQueue = append(nodeQueue, *curNode.Left) // 压入队列
+			queueTail++                                  // 队列尾巴修正
+		}
+		if curNode.Right != nil {
+			nodeQueue = append(nodeQueue, *curNode.Right) // 压入队列
+			queueTail++                                   // 队列尾巴修正
+		}
+	}
+
+	// 开始程序
+	nodeQueue = append(nodeQueue, *node) // 压入队列
+	queueTail++                          // 队列尾巴修正
+	for queueTail-queueHead > 0 {
+		travel()
+	}
+}
