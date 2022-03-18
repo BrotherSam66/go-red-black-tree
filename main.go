@@ -23,12 +23,12 @@ func main() {
 		fmt.Println("S Show完整的树")
 		fmt.Println("F Find查找数据")
 		fmt.Println("D Delete删除数据")
-		fmt.Println("Q PreOrder 前序遍历")
-		fmt.Println("Z InfixOrder 中序遍历")
-		fmt.Println("H PostOrder 后序遍历")
+		//fmt.Println("Q PreOrder 前序遍历")
+		//fmt.Println("Z InfixOrder 中序遍历")
+		//fmt.Println("H PostOrder 后序遍历")
 		fmt.Println("E Exit退出")
 		fmt.Println("请输入指令，按回车键：")
-		fmt.Scanln(&command)
+		_, _ = fmt.Scanln(&command)
 		command = strings.ToUpper(command)
 
 		switch command {
@@ -39,7 +39,7 @@ func main() {
 		case "F":
 			var key int
 			fmt.Println("请输入KEY，按回车键(0退出)：")
-			fmt.Scanln(&key)
+			_, _ = fmt.Scanln(&key)
 			node, err := rbtutils.Find(key)
 			if err != nil {
 				fmt.Println("查找错误，error == ", err)

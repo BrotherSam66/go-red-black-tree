@@ -1,5 +1,7 @@
 package rbtmodels
 
+import "errors"
+
 /*
 《红黑树》
 
@@ -46,4 +48,17 @@ func NewRBTNode(isRed bool, key int, label string, parent *RBTNode, left *RBTNod
 		Left:   left,
 		Right:  right,
 	}
+}
+
+func (n *RBTNode) ReplaceInfo(avatar *RBTNode) (err error) {
+	if avatar == nil {
+		return errors.New("老大，拟替换节点是nil，这活没法干啊！")
+	}
+	// n.IsRed  = avatar.IsRed // 不改颜色，不改连接指向
+	n.Key = avatar.Key
+	n.Label = avatar.Label
+	//n.Parent = avatar.Parent
+	//n.Left = avatar.Left
+	//n.Right = avatar.Right
+	return nil
 }
